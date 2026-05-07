@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schwab DCA & Portfolio Analyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0f1e36; --navy-mid: #243c5e;
+      --accent: #2e7cf6; --accent-light: #dbeafe; --accent-dark: #1a56c4;
+      --teal: #0ea88a; --amber: #f59e0b; --amber-light: #fef3c7;
+      --danger: #ef4444; --danger-light: #fee2e2;
+      --success: #16a34a; --success-light: #dcfce7;
+      --bg: #f8fafd; --surface: #ffffff; --surface2: #f1f5fb;
+      --border: #e2e8f4; --border2: #c8d4e8;
+      --text: #0f1e36; --text2: #4a5e7a; --text3: #8a9bb5;
+      --radius: 12px; --radius-sm: 8px;
+      --shadow: 0 1px 3px rgba(15,30,54,0.08), 0 4px 16px rgba(15,30,54,0.06);
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; line-height: 1.6; }
+    header { background: var(--navy); padding: 0 2rem; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--navy-mid); }
+    .header-inner { max-width: 1200px; margin: 0 auto; height: 64px; display: flex; align-items: center; justify-content: space-between; }
+    .logo { display: flex; align-items: center; gap: 12px; color: #fff; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+    .logo-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .header-meta { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
+    .tab-nav { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; display: flex; gap: 4px; border-bottom: 1px solid var(--border); background: var(--surface); }
+    .tab-btn { background: none; border: none; padding: 16px 20px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s; }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+    main { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    .page-title { font-size: 28px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: var(--text2); margin-bottom: 2rem; }
+    .panel { display: none; }
+    .panel.active { display: block; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow); margin-bottom: 1.25rem; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .card-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); display: inline-flex; align-items: center; gap: 8px; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+    .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; box-shadow: var(--shadow); }
+    .metric-label { font-size: 12px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .metric-value { font-size: 26px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; font-family: 'DM Mono', monospace; }
+    .metric-sub { font-size: 12px; color: var(--text3); margin-top: 3px; }
+    .metric-sub.up { color: var(--success); font-weight: 500; }
+    .metric-sub.down { color: var(--danger); font-weight: 500; }
+    .metric.accent { border-color: var(--accent); }
+    .metric.accent .metric-value { color: var(--accent); }
+    .settings-row { display: flex; align-items: flex-end; gap: 1.25rem; flex-wrap: wrap; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 12px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.04em; }
+    .field input { font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text); background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 9px 12px; outline: none; transition: border-color 0.15s; }
+    .field input:focus { border-color: var(--accent); }
+    .field input[type=number] { width: 140px; font-family: 'DM Mono', monospace; }
+    .per-inv-display { background: var(--accent-light); color: var(--accent-dark); border-radius: var(--radius-sm); padding: 9px 16px; font-size: 15px; font-weight: 600; font-family: 'DM Mono', monospace; align-self: flex-end; white-space: nowrap; }
+    .dates-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1rem; }
+    .date-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 16px; text-align: center; }
+    .date-chip-main { font-size: 15px; font-weight: 600; color: var(--text); }
+    .date-chip-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+    .holdings-grid { display: grid; grid-template-columns: 100px 1fr 1fr 1fr 80px 44px; gap: 8px; align-items: center; }
+    .holdings-grid-header { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; padding: 0 4px 6px; }
+    .holdings-grid input { font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 10px; width: 100%; outline: none; transition: border-color 0.15s, background 0.15s; }
+    .holdings-grid input:focus { border-color: var(--accent); background: var(--surface); }
+    .holdings-grid input[type=text] { text-transform: uppercase; font-weight: 600; letter-spacing: 0.04em; }
+    .btn-icon { width: 36px; height: 36px; border-radius: var(--radius-sm); border: 1px solid var(--border2); background: var(--surface); color: var(--text2); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; font-size: 18px; }
+    .btn-icon:hover { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
+    .action-row { display: flex; gap: 10px; margin-top: 1rem; align-items: center; flex-wrap: wrap; }
+    button.btn { font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; padding: 9px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border2); background: var(--surface); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: all 0.15s; }
+    button.btn:hover { background: var(--surface2); border-color: var(--accent); color: var(--accent); }
+    button.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    button.btn.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
+    button.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .fetch-status { font-size: 12px; color: var(--text3); }
+    .alloc-row { display: grid; grid-template-columns: 70px 1fr 50px 110px; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .alloc-row:last-child { border-bottom: none; }
+    .alloc-ticker { font-size: 14px; font-weight: 600; color: var(--text); font-family: 'DM Mono', monospace; }
+    .alloc-bar-bg { height: 8px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+    .alloc-bar { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+    .alloc-pct { font-size: 13px; color: var(--text3); text-align: right; }
+    .alloc-amount { font-size: 16px; font-weight: 600; color: var(--text); font-family: 'DM Mono', monospace; text-align: right; }
+    .alloc-total-row { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; margin-top: 4px; border-top: 2px solid var(--border); }
+    .alloc-total-label { font-size: 13px; color: var(--text2); font-weight: 500; }
+    .alloc-total-amount { font-size: 22px; font-weight: 600; color: var(--accent); font-family: 'DM Mono', monospace; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .data-table th { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; text-align: left; padding: 0 12px 10px; border-bottom: 1px solid var(--border); }
+    .data-table th:not(:first-child) { text-align: right; }
+    .data-table td { padding: 14px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+    .data-table td:not(:first-child) { text-align: right; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: var(--surface2); }
+    .ticker-pill { display: inline-block; background: var(--accent-light); color: var(--accent-dark); font-size: 12px; font-weight: 700; padding: 4px 11px; border-radius: 99px; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; }
+    .drift-pill, .perf-pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 99px; }
+    .drift-ok, .perf-flat { background: var(--surface2); color: var(--text3); }
+    .drift-over, .perf-down { background: var(--danger-light); color: #991b1b; }
+    .drift-under, .perf-up { background: var(--success-light); color: #14532d; }
+    .perf-pill.bg { padding: 4px 10px; }
+    .empty-state { text-align: center; padding: 3rem; color: var(--text3); }
+    .empty-state i { font-size: 36px; display: block; margin-bottom: 10px; }
+    .empty-state p { font-size: 14px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .insight-list { display: flex; flex-direction: column; gap: 12px; }
+    .insight { display: flex; gap: 14px; padding: 14px 16px; border-radius: var(--radius-sm); border-left: 3px solid; background: var(--surface2); }
+    .insight-icon { font-size: 22px; flex-shrink: 0; line-height: 1; margin-top: 2px; }
+    .insight-body { flex: 1; }
+    .insight-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+    .insight-text { font-size: 13px; color: var(--text2); line-height: 1.55; }
+    .insight.positive { border-color: var(--success); background: var(--success-light); }
+    .insight.positive .insight-icon { color: var(--success); }
+    .insight.warning { border-color: var(--amber); background: var(--amber-light); }
+    .insight.warning .insight-icon { color: var(--amber); }
+    .insight.negative { border-color: var(--danger); background: var(--danger-light); }
+    .insight.negative .insight-icon { color: var(--danger); }
+    .insight.info { border-color: var(--accent); background: var(--accent-light); }
+    .insight.info .insight-icon { color: var(--accent); }
+    .perf-rank { display: flex; flex-direction: column; gap: 8px; }
+    .perf-item { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 10px 12px; background: var(--surface2); border-radius: var(--radius-sm); }
+    .perf-item-left { display: flex; align-items: center; gap: 10px; }
+    .perf-item-ticker { font-family: 'DM Mono', monospace; font-weight: 700; font-size: 14px; }
+    .perf-item-amount { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 600; }
+    .chart-wrapper { position: relative; width: 100%; height: 280px; }
+    .notice { background: var(--amber-light); border: 1px solid #fcd34d; border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px; color: #92400e; margin-top: 10px; display: none; }
+    .notice.visible { display: block; }
+    .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 1rem; }
+    .stat-block { background: var(--surface2); border-radius: var(--radius-sm); padding: 14px; }
+    .stat-block-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .stat-block-value { font-size: 18px; font-weight: 600; font-family: 'DM Mono', monospace; }
+    .stat-block-value.up { color: var(--success); }
+    .stat-block-value.down { color: var(--danger); }
+    @media (max-width: 800px) {
+      .two-col { grid-template-columns: 1fr; }
+      .holdings-grid { grid-template-columns: 80px 1fr 1fr 1fr 60px 36px; gap: 6px; font-size: 13px; }
+      .holdings-grid input { padding: 7px 8px; font-size: 13px; }
+      .metrics-grid { grid-template-columns: 1fr 1fr; }
+      header { padding: 0 1rem; }
+      .tab-nav { padding: 0 0.75rem; overflow-x: auto; }
+      .tab-btn { padding: 14px 14px; white-space: nowrap; font-size: 13px; }
+      main { padding: 1.5rem 1rem 3rem; }
+      .page-title { font-size: 22px; }
+    }
+    @media (max-width: 540px) {
+      .holdings-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .holdings-grid .holdings-grid-header { display: none; }
+      .holdings-grid input { background: var(--surface); border: 1px solid var(--border2); }
+      .alloc-row { grid-template-columns: 60px 1fr 100px; }
+      .alloc-row .alloc-pct { display: none; }
+      .data-table th:nth-child(2), .data-table td:nth-child(2),
+      .data-table th:nth-child(3), .data-table td:nth-child(3) { display: none; }
+    }
+    footer { text-align: center; padding: 2rem 1rem; font-size: 12px; color: var(--text3); border-top: 1px solid var(--border); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon"><i class="ti ti-trending-up" style="color:#fff;font-size:20px;" aria-hidden="true"></i></div>
+      DCA &amp; Portfolio Analyzer
+    </div>
+    <div class="header-meta" id="headerDate"></div>
+  </div>
+</header>
+
+<nav class="tab-nav">
+  <button class="tab-btn active" data-panel="dca"><i class="ti ti-target" aria-hidden="true"></i> DCA Plan</button>
+  <button class="tab-btn" data-panel="portfolio"><i class="ti ti-chart-pie" aria-hidden="true"></i> Portfolio Analysis</button>
+  <button class="tab-btn" data-panel="insights"><i class="ti ti-bulb" aria-hidden="true"></i> Insights</button>
+</nav>
+
+<main>
+
+  <section class="panel active" id="panel-dca">
+    <h1 class="page-title">DCA Investment Plan</h1>
+    <p class="page-subtitle">Calculate semi-monthly investments based on your target allocations</p>
+
+    <div class="metrics-grid">
+      <div class="metric accent">
+        <div class="metric-label">Per Investment</div>
+        <div class="metric-value" id="mPerInv">$416.67</div>
+        <div class="metric-sub">semi-monthly</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Annual Target</div>
+        <div class="metric-value" id="mAnnual">$10,000</div>
+        <div class="metric-sub" id="mAnnualSub">24 investments/year</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">YTD Progress</div>
+        <div class="metric-value" id="mProgress">—</div>
+        <div class="metric-sub" id="mProgressSub">investments made</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Next Investment</div>
+        <div class="metric-value" id="mNextDate" style="font-size:22px;">—</div>
+        <div class="metric-sub" id="mNextDateSub"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="ti ti-settings" aria-hidden="true"></i> Strategy Settings</div>
+      </div>
+      <div class="settings-row">
+        <div class="field">
+          <label>Annual Target ($)</label>
+          <input type="number" id="annualTarget" value="10000" min="100" step="100" oninput="recalcAll()">
+        </div>
+        <div class="field">
+          <label>Investments / Year</label>
+          <input type="number" id="invPerYear" value="24" min="1" max="52" oninput="recalcAll()">
+        </div>
+        <div class="per-inv-display" id="perInvDisplay">= $416.67 per investment</div>
+      </div>
+      <div>
+        <div class="card-title" style="margin-top:1.25rem; margin-bottom:0.5rem;"><i class="ti ti-calendar" aria-hidden="true"></i> Upcoming Dates</div>
+        <div class="dates-row" id="nextDates"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="ti ti-chart-pie" aria-hidden="true"></i> Semi-Monthly Allocations</div>
+      </div>
+      <div id="allocRows">
+        <div class="empty-state"><i class="ti ti-chart-pie" aria-hidden="true"></i><p>Add holdings on the Portfolio tab</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-portfolio">
+    <h1 class="page-title">Portfolio Analysis</h1>
+    <p class="page-subtitle">Track all holdings and see what's helping vs. hurting your wealth-building</p>
+
+    <div class="metrics-grid">
+      <div class="metric accent">
+        <div class="metric-label">Portfolio Value</div>
+        <div class="metric-value" id="pPortfolio">—</div>
+        <div class="metric-sub">at current prices</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Total Invested</div>
+        <div class="metric-value" id="pInvested">—</div>
+        <div class="metric-sub">cost basis</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Total Gain / Loss</div>
+        <div class="metric-value" id="pGainLoss">—</div>
+        <div class="metric-sub" id="pGainLossSub">unrealized</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Total Return</div>
+        <div class="metric-value" id="pReturn">—</div>
+        <div class="metric-sub" id="pReturnSub">overall</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="ti ti-wallet" aria-hidden="true"></i> Your Holdings</div>
+      </div>
+      <div class="holdings-grid">
+        <div class="holdings-grid-header">Ticker</div>
+        <div class="holdings-grid-header">Shares</div>
+        <div class="holdings-grid-header">Avg Cost ($)</div>
+        <div class="holdings-grid-header">Current Price ($)</div>
+        <div class="holdings-grid-header">Target %</div>
+        <div></div>
+      </div>
+      <div id="holdingsInputs"></div>
+      <div class="action-row">
+        <button class="btn" onclick="addRow()"><i class="ti ti-plus" aria-hidden="true"></i> Add holding</button>
+        <button class="btn primary" id="fetchBtn" onclick="fetchPrices()"><i class="ti ti-refresh" aria-hidden="true"></i> Fetch live prices</button>
+        <span class="fetch-status" id="fetchStatus"></span>
+      </div>
+      <div class="notice" id="manualNotice">
+        <strong>Tip:</strong> If auto-fetch is blocked by your browser, look up prices on Schwab.com or Google Finance. Avg Cost = your purchase price per share (find it in your Schwab cost basis report).
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="ti ti-chart-donut" aria-hidden="true"></i> Allocation Mix</div>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="allocChart" role="img" aria-label="Portfolio allocation by holding"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="ti ti-arrows-up-down" aria-hidden="true"></i> Performance Ranking</div>
+        </div>
+        <div id="perfRanking">
+          <div class="empty-state" style="padding:1.5rem;"><p style="font-size:13px;">Enter cost basis and prices</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="ti ti-table" aria-hidden="true"></i> Detailed Holdings</div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="data-table" role="table" aria-label="Detailed holdings breakdown">
+          <thead>
+            <tr><th>Ticker</th><th>Shares</th><th>Avg Cost</th><th>Price</th><th>Value</th><th>Gain/Loss</th><th>Return %</th><th>Weight</th><th>Drift</th></tr>
+          </thead>
+          <tbody id="holdingsTbody">
+            <tr><td colspan="9"><div class="empty-state" style="padding:2rem;"><p>No holdings added yet</p></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-insights">
+    <h1 class="page-title">Portfolio Insights</h1>
+    <p class="page-subtitle">Automated analysis of your positions with potential actions to consider</p>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="ti ti-clipboard-data" aria-hidden="true"></i> Quick Stats</div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-block"><div class="stat-block-label">Best Performer</div><div class="stat-block-value up" id="sBest">—</div></div>
+        <div class="stat-block"><div class="stat-block-label">Worst Performer</div><div class="stat-block-value down" id="sWorst">—</div></div>
+        <div class="stat-block"><div class="stat-block-label">Largest Position</div><div class="stat-block-value" id="sLargest">—</div></div>
+        <div class="stat-block"><div class="stat-block-label">Concentration Risk</div><div class="stat-block-value" id="sConcentration">—</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="ti ti-bulb" aria-hidden="true"></i> Insights &amp; Suggested Actions</div>
+      </div>
+      <div class="insight-list" id="insightList">
+        <div class="empty-state"><i class="ti ti-bulb" aria-hidden="true"></i><p>Add holdings and prices to see personalized insights</p></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="ti ti-info-circle" aria-hidden="true"></i> How to Read These</div>
+      </div>
+      <p style="font-size:14px; color:var(--text2); line-height:1.65; margin-bottom:8px;">
+        These are automated heuristics, not personalized financial advice. They flag patterns worth thinking about — concentration risk, allocation drift, big winners and losers — and suggest actions to consider.
+      </p>
+      <p style="font-size:14px; color:var(--text2); line-height:1.65;">
+        Always consider tax implications, your time horizon, and your risk tolerance before acting. For complex decisions, consult a fiduciary financial advisor.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<footer>Schwab DCA &amp; Portfolio Analyzer &middot; Personal use only &middot; Not financial advice</footer>
+
+<script>
+  let holdings = [
+    { ticker: 'SCHB', shares: 0, avgCost: 0, price: 0, target: 70 },
+    { ticker: 'SCHF', shares: 0, avgCost: 0, price: 0, target: 20 },
+    { ticker: 'SCHZ', shares: 0, avgCost: 0, price: 0, target: 10 },
+  ];
+  const COLORS = ['#2e7cf6','#0ea88a','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthsLong = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let allocChart = null;
+
+  function fmt(n, dec=2) { return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
+  function fmtSigned(n, dec=2) { const sign = n >= 0 ? '+' : '−'; return sign + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
+  function fmtPct(n) { return (n >= 0 ? '+' : '') + n.toFixed(2) + '%'; }
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.panel;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + target).classList.add('active');
+      if (target === 'portfolio') setTimeout(updateChart, 50);
+    });
+  });
+
+  const now = new Date();
+  document.getElementById('headerDate').textContent = days[now.getDay()] + ' ' + months[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear();
+
+  function getNextInvestmentDates() {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const result = []; let yr = today.getFullYear(), mo = today.getMonth();
+    for (let i = 0; i < 6 && result.length < 4; i++) {
+      [1, 15].forEach(d => {
+        const dt = new Date(yr, mo, d);
+        if (dt >= today && result.length < 4) result.push(dt);
+      });
+      mo++; if (mo > 11) { mo = 0; yr++; }
+    }
+    return result;
+  }
+
+  function renderNextDates() {
+    const dates = getNextInvestmentDates();
+    document.getElementById('nextDates').innerHTML = dates.map(d =>
+      `<div class="date-chip"><div class="date-chip-main">${months[d.getMonth()]} ${d.getDate()}</div><div class="date-chip-sub">${days[d.getDay()]} &middot; ${d.getFullYear()}</div></div>`
+    ).join('');
+    if (dates.length > 0) {
+      const next = dates[0];
+      const daysUntil = Math.ceil((next - now) / 86400000);
+      document.getElementById('mNextDate').textContent = monthsLong[next.getMonth()].slice(0,3) + ' ' + next.getDate();
+      document.getElementById('mNextDateSub').textContent = daysUntil <= 0 ? 'today' : daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`;
+    }
+  }
+
+  function renderHoldingInputs() {
+    document.getElementById('holdingsInputs').innerHTML = holdings.map((h, i) => `
+      <div class="holdings-grid" style="margin-bottom:8px;">
+        <input type="text" placeholder="SCHB" value="${h.ticker}" oninput="holdings[${i}].ticker=this.value.toUpperCase().trim();recalcAll()" maxlength="6">
+        <input type="number" placeholder="0" value="${h.shares || ''}" min="0" step="0.001" oninput="holdings[${i}].shares=parseFloat(this.value)||0;recalcAll()">
+        <input type="number" placeholder="0.00" value="${h.avgCost || ''}" min="0" step="0.01" oninput="holdings[${i}].avgCost=parseFloat(this.value)||0;recalcAll()">
+        <input type="number" placeholder="0.00" value="${h.price || ''}" min="0" step="0.01" oninput="holdings[${i}].price=parseFloat(this.value)||0;recalcAll()" id="priceInput${i}">
+        <input type="number" placeholder="%" value="${h.target}" min="0" max="100" step="1" oninput="holdings[${i}].target=parseFloat(this.value)||0;recalcAll()">
+        <button class="btn-icon" onclick="removeRow(${i})" aria-label="Remove ${h.ticker || 'fund'}"><i class="ti ti-x" aria-hidden="true"></i></button>
+      </div>`).join('');
+  }
+
+  function addRow() { holdings.push({ ticker: '', shares: 0, avgCost: 0, price: 0, target: 0 }); renderHoldingInputs(); }
+  function removeRow(i) { holdings.splice(i, 1); renderHoldingInputs(); recalcAll(); }
+
+  function compute() {
+    const annual = parseFloat(document.getElementById('annualTarget').value) || 10000;
+    const perYear = parseFloat(document.getElementById('invPerYear').value) || 24;
+    const perInv = annual / perYear;
+    const totalTarget = holdings.reduce((s, h) => s + h.target, 0);
+    const totalValue = holdings.reduce((s, h) => s + h.shares * h.price, 0);
+    const totalCost = holdings.reduce((s, h) => s + h.shares * h.avgCost, 0);
+    const totalGainLoss = totalValue - totalCost;
+    const totalReturn = totalCost > 0 ? totalGainLoss / totalCost * 100 : 0;
+    const enriched = holdings.map(h => {
+      const value = h.shares * h.price;
+      const cost = h.shares * h.avgCost;
+      const gainLoss = value - cost;
+      const returnPct = cost > 0 ? gainLoss / cost * 100 : 0;
+      const weight = totalValue > 0 ? value / totalValue * 100 : 0;
+      const normTarget = totalTarget > 0 ? h.target / totalTarget * 100 : 0;
+      const drift = weight - normTarget;
+      return { ...h, value, cost, gainLoss, returnPct, weight, normTarget, drift };
+    });
+    return { annual, perYear, perInv, totalTarget, totalValue, totalCost, totalGainLoss, totalReturn, enriched };
+  }
+
+  function renderDcaPanel(data) {
+    const { annual, perYear, perInv, totalTarget, enriched } = data;
+    document.getElementById('perInvDisplay').textContent = '= ' + fmt(perInv) + ' per investment';
+    document.getElementById('mPerInv').textContent = fmt(perInv);
+    document.getElementById('mAnnual').textContent = fmt(annual, 0);
+    document.getElementById('mAnnualSub').textContent = `${perYear} investments/year`;
+    const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 1)) / 86400000);
+    const estMade = Math.min(Math.floor(dayOfYear / 365 * perYear), perYear);
+    document.getElementById('mProgress').textContent = estMade;
+    document.getElementById('mProgressSub').textContent = `of ${perYear} investments made`;
+
+    const allocContainer = document.getElementById('allocRows');
+    if (!enriched.length || totalTarget === 0) {
+      allocContainer.innerHTML = '<div class="empty-state"><i class="ti ti-chart-pie" aria-hidden="true"></i><p>Add holdings with target allocations on the Portfolio tab</p></div>';
+      return;
+    }
+    const rows = enriched.map((h, i) => {
+      const norm = h.target / totalTarget;
+      const amount = perInv * norm;
+      const color = COLORS[i % COLORS.length];
+      return `<div class="alloc-row">
+        <span class="alloc-ticker">${h.ticker || '—'}</span>
+        <div class="alloc-bar-bg"><div class="alloc-bar" style="width:${(norm*100).toFixed(1)}%;background:${color};"></div></div>
+        <span class="alloc-pct">${(norm*100).toFixed(0)}%</span>
+        <span class="alloc-amount">${fmt(amount)}</span>
+      </div>`;
+    }).join('');
+    allocContainer.innerHTML = `${rows}<div class="alloc-total-row"><span class="alloc-total-label">Total per investment</span><span class="alloc-total-amount">${fmt(perInv)}</span></div>`;
+  }
+
+  function renderPortfolioPanel(data) {
+    const { totalValue, totalCost, totalGainLoss, totalReturn, enriched } = data;
+    document.getElementById('pPortfolio').textContent = totalValue > 0 ? fmt(totalValue, 0) : '—';
+    document.getElementById('pInvested').textContent = totalCost > 0 ? fmt(totalCost, 0) : '—';
+
+    const gainEl = document.getElementById('pGainLoss');
+    const gainSubEl = document.getElementById('pGainLossSub');
+    if (totalCost > 0) {
+      gainEl.textContent = fmtSigned(totalGainLoss, 0);
+      gainEl.style.color = totalGainLoss >= 0 ? 'var(--success)' : 'var(--danger)';
+      gainSubEl.textContent = totalGainLoss >= 0 ? 'unrealized gain' : 'unrealized loss';
+      gainSubEl.className = 'metric-sub ' + (totalGainLoss >= 0 ? 'up' : 'down');
+    } else {
+      gainEl.textContent = '—'; gainEl.style.color = '';
+      gainSubEl.textContent = 'enter cost basis'; gainSubEl.className = 'metric-sub';
+    }
+
+    const retEl = document.getElementById('pReturn');
+    const retSubEl = document.getElementById('pReturnSub');
+    if (totalCost > 0) {
+      retEl.textContent = fmtPct(totalReturn);
+      retEl.style.color = totalReturn >= 0 ? 'var(--success)' : 'var(--danger)';
+      retSubEl.textContent = 'overall'; retSubEl.className = 'metric-sub ' + (totalReturn >= 0 ? 'up' : 'down');
+    } else {
+      retEl.textContent = '—'; retEl.style.color = '';
+    }
+
+    const tbody = document.getElementById('holdingsTbody');
+    if (totalValue === 0) {
+      tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state" style="padding:1.5rem;"><p>Enter prices to see breakdown</p></div></td></tr>';
+    } else {
+      tbody.innerHTML = enriched.map(h => {
+        const driftClass = Math.abs(h.drift) < 2 ? 'drift-ok' : h.drift > 0 ? 'drift-over' : 'drift-under';
+        const driftLabel = Math.abs(h.drift) < 2 ? 'On target' : (h.drift > 0 ? '+' : '') + h.drift.toFixed(1) + '%';
+        const glClass = h.gainLoss >= 0 ? 'perf-up' : 'perf-down';
+        const retClass = h.returnPct >= 0 ? 'perf-up' : 'perf-down';
+        return `<tr>
+          <td><span class="ticker-pill">${h.ticker || '—'}</span></td>
+          <td>${h.shares ? h.shares.toLocaleString('en-US', {maximumFractionDigits:3}) : '—'}</td>
+          <td>${h.avgCost > 0 ? fmt(h.avgCost) : '—'}</td>
+          <td>${h.price > 0 ? fmt(h.price) : '—'}</td>
+          <td>${h.value > 0 ? fmt(h.value, 0) : '—'}</td>
+          <td>${h.cost > 0 ? `<span class="perf-pill bg ${glClass}">${fmtSigned(h.gainLoss, 0)}</span>` : '—'}</td>
+          <td>${h.cost > 0 ? `<span class="perf-pill ${retClass}">${fmtPct(h.returnPct)}</span>` : '—'}</td>
+          <td>${h.weight.toFixed(1)}%</td>
+          <td><span class="drift-pill ${driftClass}">${driftLabel}</span></td>
+        </tr>`;
+      }).join('');
+    }
+
+    const rankContainer = document.getElementById('perfRanking');
+    const ranked = enriched.filter(h => h.cost > 0).sort((a, b) => b.returnPct - a.returnPct);
+    if (ranked.length === 0) {
+      rankContainer.innerHTML = '<div class="empty-state" style="padding:1.5rem;"><p style="font-size:13px;">Enter cost basis and prices</p></div>';
+    } else {
+      rankContainer.innerHTML = `<div class="perf-rank">${ranked.map((h, idx) => {
+        const isTop = idx === 0;
+        const isBottom = idx === ranked.length - 1 && ranked.length > 1;
+        const arrow = h.returnPct >= 0 ? 'ti-arrow-up-right' : 'ti-arrow-down-right';
+        const cls = h.returnPct >= 0 ? 'perf-up' : 'perf-down';
+        const badge = isTop ? '<span style="font-size:11px;background:var(--success-light);color:#14532d;padding:2px 7px;border-radius:99px;font-weight:600;">TOP</span>' : isBottom ? '<span style="font-size:11px;background:var(--danger-light);color:#991b1b;padding:2px 7px;border-radius:99px;font-weight:600;">LAGS</span>' : '';
+        return `<div class="perf-item">
+          <div class="perf-item-left"><span class="perf-item-ticker">${h.ticker}</span>${badge}</div>
+          <span class="perf-item-amount" style="color:${h.gainLoss >= 0 ? 'var(--success)' : 'var(--danger)'}">${fmtSigned(h.gainLoss, 0)}</span>
+          <span><span class="perf-pill ${cls}"><i class="ti ${arrow}" style="font-size:11px;" aria-hidden="true"></i> ${fmtPct(h.returnPct)}</span></span>
+        </div>`;
+      }).join('')}</div>`;
+    }
+    updateChart();
+  }
+
+  function updateChart() {
+    const data = compute();
+    const valid = data.enriched.filter(h => h.value > 0);
+    const ctx = document.getElementById('allocChart');
+    if (!ctx) return;
+    if (valid.length === 0) {
+      if (allocChart) { allocChart.destroy(); allocChart = null; }
+      const c = ctx.getContext('2d');
+      c.clearRect(0, 0, ctx.width, ctx.height);
+      c.fillStyle = '#8a9bb5'; c.font = '14px DM Sans'; c.textAlign = 'center';
+      c.fillText('No holdings to display', ctx.width / 2, ctx.height / 2);
+      return;
+    }
+    const labels = valid.map(h => h.ticker);
+    const values = valid.map(h => h.value);
+    const bgColors = valid.map((_, i) => COLORS[i % COLORS.length]);
+    if (allocChart) {
+      allocChart.data.labels = labels;
+      allocChart.data.datasets[0].data = values;
+      allocChart.data.datasets[0].backgroundColor = bgColors;
+      allocChart.update();
+    } else {
+      allocChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data: values, backgroundColor: bgColors, borderColor: '#fff', borderWidth: 2 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '62%',
+          plugins: {
+            legend: { position: 'right', labels: { font: { family: 'DM Sans', size: 13 }, color: '#0f1e36', padding: 12, boxWidth: 12, boxHeight: 12 } },
+            tooltip: { callbacks: { label: (c) => `${c.label}: $${c.parsed.toLocaleString('en-US', {maximumFractionDigits: 0})} (${(c.parsed/values.reduce((a,b)=>a+b,0)*100).toFixed(1)}%)` } }
+          }
+        }
+      });
+    }
+  }
+
+  function generateInsights(data) {
+    const { totalValue, totalCost, totalReturn, enriched } = data;
+    const insights = [];
+    const valid = enriched.filter(h => h.value > 0);
+    const withCost = enriched.filter(h => h.cost > 0);
+    if (valid.length === 0) return insights;
+
+    const top = [...valid].sort((a, b) => b.weight - a.weight)[0];
+    if (top && top.weight > 50) {
+      insights.push({ type: 'warning', icon: 'ti-alert-triangle', title: 'Concentration risk detected',
+        text: `${top.ticker} represents ${top.weight.toFixed(1)}% of your portfolio. Single-position concentration above 50% increases volatility. Consider directing your next DCA contributions toward underweighted positions to dilute concentration over time.` });
+    } else if (top && top.weight > 35) {
+      insights.push({ type: 'info', icon: 'ti-info-circle', title: 'Largest position is sizable',
+        text: `${top.ticker} is ${top.weight.toFixed(1)}% of your portfolio. Reasonable for a core holding, but worth monitoring if it grows much further.` });
+    }
+
+    const drifted = valid.filter(h => Math.abs(h.drift) >= 5);
+    drifted.forEach(h => {
+      if (h.drift > 0) {
+        insights.push({ type: 'warning', icon: 'ti-arrow-up-right', title: `${h.ticker} is overweight by ${h.drift.toFixed(1)}%`,
+          text: `${h.ticker} has grown to ${h.weight.toFixed(1)}% vs. your ${h.normTarget.toFixed(0)}% target. Consider directing upcoming DCA contributions toward underweighted positions instead of buying more ${h.ticker}, or rebalance by trimming gains (mind capital gains taxes in taxable accounts).` });
+      } else {
+        insights.push({ type: 'info', icon: 'ti-arrow-down-right', title: `${h.ticker} is underweight by ${Math.abs(h.drift).toFixed(1)}%`,
+          text: `${h.ticker} sits at ${h.weight.toFixed(1)}% vs. your ${h.normTarget.toFixed(0)}% target. Lean your next DCA buys more heavily toward ${h.ticker} to bring the allocation back in line.` });
+      }
+    });
+
+    const bigWinners = withCost.filter(h => h.returnPct >= 30).sort((a,b) => b.returnPct - a.returnPct);
+    if (bigWinners.length > 0) {
+      const t = bigWinners[0];
+      insights.push({ type: 'positive', icon: 'ti-trending-up', title: `${t.ticker} is your biggest winner (+${t.returnPct.toFixed(1)}%)`,
+        text: `${t.ticker} has gained ${fmtSigned(t.gainLoss, 0)} on a ${fmt(t.cost, 0)} cost basis. In a taxable account, beware capital gains taxes on any sales — long-term holds (>1 year) get preferential rates. In a retirement account, letting winners ride is generally optimal since there's no tax friction.` });
+    }
+
+    const bigLosers = withCost.filter(h => h.returnPct <= -15).sort((a,b) => a.returnPct - b.returnPct);
+    if (bigLosers.length > 0) {
+      const w = bigLosers[0];
+      insights.push({ type: 'negative', icon: 'ti-trending-down', title: `${w.ticker} is down ${w.returnPct.toFixed(1)}%`,
+        text: `${w.ticker} has lost ${fmtSigned(w.gainLoss, 0)}. Two questions: (1) Has the original investment thesis changed? If yes, exiting may make sense. If no, this could be an opportunity to lower your average cost. (2) In a taxable account, harvesting this loss could offset capital gains elsewhere — but watch for IRS wash-sale rules (no buying the same security 30 days before/after the sale).` });
+    }
+
+    if (totalCost > 0) {
+      if (totalReturn >= 15) {
+        insights.push({ type: 'positive', icon: 'ti-rocket', title: 'Strong overall performance',
+          text: `Your portfolio is up ${totalReturn.toFixed(1)}% (${fmtSigned(totalValue - totalCost, 0)}). Stay the course on your DCA plan — consistency over time is what compounds wealth.` });
+      } else if (totalReturn <= -10) {
+        insights.push({ type: 'info', icon: 'ti-mood-neutral', title: 'Portfolio currently down',
+          text: `Your portfolio is at ${totalReturn.toFixed(1)}%. This is exactly when DCA shines — your scheduled buys are picking up shares at lower prices, which lowers your average cost. Resist the urge to pause contributions.` });
+      }
+    }
+
+    if (valid.length === 1) {
+      insights.push({ type: 'warning', icon: 'ti-cube', title: 'Single-fund portfolio',
+        text: `You only hold one position. Even broad index ETFs benefit from diversification across asset classes. Consider adding international exposure (e.g. SCHF) or bonds (e.g. SCHZ) to balance risk.` });
+    } else if (valid.length === 2) {
+      insights.push({ type: 'info', icon: 'ti-grid-dots', title: 'Light diversification',
+        text: `Two-fund portfolio is simple and effective for many investors, but adding a third asset class (bonds, international, or sector exposure) can smooth volatility further.` });
+    }
+
+    const annual = parseFloat(document.getElementById('annualTarget').value) || 10000;
+    if (totalValue > 0 && annual > 0) {
+      const ratio = totalValue / annual;
+      if (ratio >= 5) {
+        insights.push({ type: 'positive', icon: 'ti-stars', title: 'Portfolio has meaningful scale',
+          text: `Your portfolio is ${ratio.toFixed(1)}× your annual contribution. At this size, market returns start contributing more to growth than your contributions — a meaningful compounding milestone.` });
+      }
+    }
+
+    if (insights.length === 0) {
+      insights.push({ type: 'info', icon: 'ti-check', title: 'Portfolio looks balanced',
+        text: `Your allocations are close to target, no major outliers detected, and no concentration risks flagged. Keep executing your DCA plan consistently.` });
+    }
+    return insights;
+  }
+
+  function renderInsights(data) {
+    const { enriched } = data;
+    const valid = enriched.filter(h => h.value > 0);
+    const withCost = enriched.filter(h => h.cost > 0);
+    const sBest = document.getElementById('sBest');
+    const sWorst = document.getElementById('sWorst');
+    const sLargest = document.getElementById('sLargest');
+    const sConcentration = document.getElementById('sConcentration');
+
+    if (withCost.length > 0) {
+      const sortedRet = [...withCost].sort((a, b) => b.returnPct - a.returnPct);
+      sBest.textContent = `${sortedRet[0].ticker} ${fmtPct(sortedRet[0].returnPct)}`;
+      sBest.className = 'stat-block-value ' + (sortedRet[0].returnPct >= 0 ? 'up' : 'down');
+      const worst = sortedRet[sortedRet.length - 1];
+      sWorst.textContent = `${worst.ticker} ${fmtPct(worst.returnPct)}`;
+      sWorst.className = 'stat-block-value ' + (worst.returnPct >= 0 ? 'up' : 'down');
+    } else {
+      sBest.textContent = '—'; sWorst.textContent = '—';
+      sBest.className = 'stat-block-value'; sWorst.className = 'stat-block-value';
+    }
+    if (valid.length > 0) {
+      const sortedW = [...valid].sort((a, b) => b.weight - a.weight);
+      const top = sortedW[0];
+      sLargest.textContent = `${top.ticker} ${top.weight.toFixed(1)}%`;
+      sConcentration.textContent = top.weight > 50 ? 'High' : top.weight > 35 ? 'Moderate' : 'Low';
+      sConcentration.className = 'stat-block-value ' + (top.weight > 50 ? 'down' : top.weight > 35 ? '' : 'up');
+    } else {
+      sLargest.textContent = '—'; sConcentration.textContent = '—';
+      sConcentration.className = 'stat-block-value';
+    }
+
+    const insights = generateInsights(data);
+    const container = document.getElementById('insightList');
+    if (insights.length === 0) {
+      container.innerHTML = '<div class="empty-state"><i class="ti ti-bulb" aria-hidden="true"></i><p>Add holdings and prices to see personalized insights</p></div>';
+    } else {
+      container.innerHTML = insights.map(ins => `
+        <div class="insight ${ins.type}">
+          <div class="insight-icon"><i class="ti ${ins.icon}" aria-hidden="true"></i></div>
+          <div class="insight-body">
+            <div class="insight-title">${ins.title}</div>
+            <div class="insight-text">${ins.text}</div>
+          </div>
+        </div>`).join('');
+    }
+  }
+
+  function recalcAll() {
+    const data = compute();
+    renderDcaPanel(data);
+    renderPortfolioPanel(data);
+    renderInsights(data);
+  }
+
+  async function fetchPrices() {
+    const btn = document.getElementById('fetchBtn');
+    const status = document.getElementById('fetchStatus');
+    const notice = document.getElementById('manualNotice');
+    const tickers = holdings.map(h => h.ticker).filter(t => t.trim());
+    if (!tickers.length) { status.textContent = 'Add tickers first.'; return; }
+    btn.disabled = true; status.textContent = 'Fetching prices...'; notice.classList.remove('visible');
+    let fetched = 0, failed = 0;
+    await Promise.all(tickers.map(async (ticker) => {
+      try {
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error();
+        const data = await resp.json();
+        const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+        if (!price) throw new Error();
+        const hi = holdings.findIndex(h => h.ticker === ticker);
+        if (hi >= 0) {
+          holdings[hi].price = price;
+          const inp = document.getElementById(`priceInput${hi}`);
+          if (inp) inp.value = price.toFixed(2);
+          fetched++;
+        }
+      } catch { failed++; }
+    }));
+    if (fetched > 0 && failed === 0) status.textContent = `✓ ${fetched} price${fetched > 1 ? 's' : ''} updated`;
+    else if (fetched > 0) { status.textContent = `✓ ${fetched} updated, ${failed} failed`; notice.classList.add('visible'); }
+    else { status.textContent = 'Auto-fetch unavailable — enter manually'; notice.classList.add('visible'); }
+    btn.disabled = false;
+    recalcAll();
+  }
+
+  renderNextDates();
+  renderHoldingInputs();
+  recalcAll();
+</script>
+</body>
+</html>
